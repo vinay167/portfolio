@@ -35,14 +35,7 @@
         button:hover {
             background: #0056b3;
         }
-        .profit-loss {
-            margin-top: 20px;
-            padding: 10px;
-            font-size: 18px;
-            font-weight: bold;
-        }
         .chart-container {
-            position: relative;
             width: 100%;
             max-width: 500px;
             height: 300px;
@@ -51,59 +44,75 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        let investments = {};
-        let chartInstance = null;
-        let timeSeriesChart = null;
+        let investments = JSON.parse(localStorage.getItem("investments")) || {};
         let timeSeriesData = JSON.parse(localStorage.getItem("timeSeriesData")) || [];
+        let currentPrices = JSON.parse(localStorage.getItem("currentPrices")) || {};
 
-        function fetchInvestments() {
-            investments = JSON.parse(localStorage.getItem("investments")) || {};
-            let totalInvested = Object.values(investments).reduce((a, b) => a + b, 0).toFixed(2);
-            document.getElementById("totalInvested").innerText = `Total Invested: $${totalInvested}`;
+        let barChartInstance = null;
+        let timeSeriesChartInstance = null;
+
+        function updateGraphs() {
+            let prices = {
+                papaStocks: parseFloat(document.getElementById("current1").value) || 0,
+                papaMutualFund: parseFloat(document.getElementById("current2").value) || 0,
+                myStocks: parseFloat(document.getElementById("current3").value) || 0,
+                myMutualFunds: parseFloat(document.getElementById("current4").value) || 0
+            };
+
+            let profitLoss = {
+                papaStocks: prices.papaStocks - (investments.papaStocks || 0),
+                papaMutualFund: prices.papaMutualFund - (investments.papaMutualFund || 0),
+                myStocks: prices.myStocks - (investments.myStocks || 0),
+                myMutualFunds: prices.myMutualFunds - (investments.myMutualFunds || 0)
+            };
+
+            let totalProfitLoss = Object.values(profitLoss).reduce((a, b) => a + b, 0).toFixed(2);
+
+            localStorage.setItem("currentPrices", JSON.stringify(prices));
+            displayProfitLoss(profitLoss, totalProfitLoss);
+            drawBarChart(profitLoss);
+            drawTimeSeriesChart();
         }
 
         function submitUpdate(event) {
             event.preventDefault();
+            let totalProfitLoss = document.getElementById("profitLoss").getAttribute("data-total") || 0;
 
-            let currentPrices = {
-                investment1: parseFloat(document.getElementById("current1").value) || 0,
-                investment2: parseFloat(document.getElementById("current2").value) || 0,
-                investment3: parseFloat(document.getElementById("current3").value) || 0,
-                investment4: parseFloat(document.getElementById("current4").value) || 0
-            };
+            let today = new Date().toISOString().split("T")[0];
+            let existingEntry = timeSeriesData.find(entry => entry.date === today);
 
-            let profitLoss = {
-                investment1: currentPrices.investment1 - investments.investment1,
-                investment2: currentPrices.investment2 - investments.investment2,
-                investment3: currentPrices.investment3 - investments.investment3,
-                investment4: currentPrices.investment4 - investments.investment4
-            };
+            if (existingEntry) {
+                existingEntry.value = parseFloat(totalProfitLoss);
+            } else {
+                timeSeriesData.push({ date: today, value: parseFloat(totalProfitLoss) });
+            }
 
-            let totalProfitLoss = Object.values(profitLoss).reduce((a, b) => a + b, 0).toFixed(2);
+            localStorage.setItem("timeSeriesData", JSON.stringify(timeSeriesData));
+            drawTimeSeriesChart();
+        }
+
+        function displayProfitLoss(profitLoss, totalProfitLoss) {
             document.getElementById("profitLoss").innerHTML = `
-                <p>Investment 1: ${profitLoss.investment1.toFixed(2)}</p>
-                <p>Investment 2: ${profitLoss.investment2.toFixed(2)}</p>
-                <p>Investment 3: ${profitLoss.investment3.toFixed(2)}</p>
-                <p>Investment 4: ${profitLoss.investment4.toFixed(2)}</p>
+                <p>Papa Stocks: ${profitLoss.papaStocks.toFixed(2)}</p>
+                <p>Papa Mutual Fund: ${profitLoss.papaMutualFund.toFixed(2)}</p>
+                <p>My Stocks: ${profitLoss.myStocks.toFixed(2)}</p>
+                <p>My Mutual Funds: ${profitLoss.myMutualFunds.toFixed(2)}</p>
                 <h3>Total Profit/Loss: ${totalProfitLoss}</h3>
             `;
-
-            updateTimeSeries(totalProfitLoss);
-            drawBarChart(profitLoss);
-            drawTimeSeriesChart();
+            document.getElementById("profitLoss").setAttribute("data-total", totalProfitLoss);
         }
 
         function drawBarChart(profitLoss) {
             let ctx = document.getElementById("profitChart").getContext("2d");
 
-            if (chartInstance) {
-                chartInstance.destroy();
+            if (barChartInstance) {
+                barChartInstance.destroy();
             }
 
-            chartInstance = new Chart(ctx, {
+            barChartInstance = new Chart(ctx, {
                 type: "bar",
                 data: {
-                    labels: ["Investment 1", "Investment 2", "Investment 3", "Investment 4"],
+                    labels: ["Papa Stocks", "Papa Mutual Fund", "My Stocks", "My Mutual Funds"],
                     datasets: [{
                         label: "Profit/Loss",
                         data: Object.values(profitLoss),
@@ -121,38 +130,25 @@
             });
         }
 
-        function updateTimeSeries(totalProfitLoss) {
-            let today = new Date().toISOString().split("T")[0]; // Get current date
-
-            let existingEntry = timeSeriesData.find(entry => entry.date === today);
-            if (existingEntry) {
-                existingEntry.value = parseFloat(totalProfitLoss);
-            } else {
-                timeSeriesData.push({ date: today, value: parseFloat(totalProfitLoss) });
-            }
-
-            localStorage.setItem("timeSeriesData", JSON.stringify(timeSeriesData));
-        }
-
         function drawTimeSeriesChart() {
             let ctx = document.getElementById("timeSeriesChart").getContext("2d");
 
-            if (timeSeriesChart) {
-                timeSeriesChart.destroy();
+            if (timeSeriesChartInstance) {
+                timeSeriesChartInstance.destroy();
             }
 
             let labels = timeSeriesData.map(entry => entry.date);
             let data = timeSeriesData.map(entry => entry.value);
 
-            timeSeriesChart = new Chart(ctx, {
+            timeSeriesChartInstance = new Chart(ctx, {
                 type: "line",
                 data: {
                     labels: labels,
                     datasets: [{
                         label: "Profit/Loss Over Time",
                         data: data,
-                        borderColor: data.map(value => value >= 0 ? "green" : "red"),
-                        backgroundColor: "rgba(0, 0, 0, 0.1)",
+                        borderColor: "blue",
+                        backgroundColor: "rgba(0, 0, 255, 0.2)",
                         fill: true,
                         tension: 0.4
                     }]
@@ -167,22 +163,33 @@
             });
         }
 
+        function loadPreviousData() {
+            if (currentPrices) {
+                document.getElementById("current1").value = currentPrices.papaStocks || "";
+                document.getElementById("current2").value = currentPrices.papaMutualFund || "";
+                document.getElementById("current3").value = currentPrices.myStocks || "";
+                document.getElementById("current4").value = currentPrices.myMutualFunds || "";
+            }
+            updateGraphs();
+        }
+
         window.onload = function () {
-            fetchInvestments();
-            drawTimeSeriesChart();
+            loadPreviousData();
+            document.querySelectorAll("input").forEach(input => {
+                input.addEventListener("input", updateGraphs);
+            });
         };
     </script>
 </head>
 <body>
     <h1>Investment Update</h1>
-    <h3 id="totalInvested">Total Invested: $0</h3>
 
     <div class="container">
         <form onsubmit="submitUpdate(event)">
-            <input type="number" id="current1" placeholder="Investment 1 Current Price" required>
-            <input type="number" id="current2" placeholder="Investment 2 Current Price" required>
-            <input type="number" id="current3" placeholder="Investment 3 Current Price" required>
-            <input type="number" id="current4" placeholder="Investment 4 Current Price" required>
+            <input type="number" id="current1" placeholder="Papa Stocks Current Price">
+            <input type="number" id="current2" placeholder="Papa Mutual Fund Current Price">
+            <input type="number" id="current3" placeholder="My Stocks Current Price">
+            <input type="number" id="current4" placeholder="My Mutual Funds Current Price">
             <button type="submit">Update</button>
         </form>
     </div>
