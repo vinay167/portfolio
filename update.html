@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 90%;
+            margin: 10px 0;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            margin: 20px auto;
+        }
+        .hidden {
+            display: none;
+        }
+        .profit-loss {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .profit-loss h3 {
+            margin-top: 0;
+        }
+        .navigation {
+            margin-top: 20px;
+        }
+        .navigation button {
+            margin: 5px;
+        }
+        label {
+            display: block;
+            text-align: left;
+            margin-left: 10px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let investments = JSON.parse(localStorage.getItem("investments")) || {};
+        let timeSeriesData = JSON.parse(localStorage.getItem("timeSeriesData")) || [];
+        let currentPrices = JSON.parse(localStorage.getItem("currentPrices")) || {};
+
+        let barChartInstance = null;
+        let timeSeriesChartInstance = null;
+        let pieChartInstance = null;
+
+        function updateGraphs() {
+            let prices = {
+                papaStocks: parseFloat(document.getElementById("current1").value) || 0,
+                papaMutualFund: parseFloat(document.getElementById("current2").value) || 0,
+                myStocks: parseFloat(document.getElementById("current3").value) || 0,
+                myMutualFunds: parseFloat(document.getElementById("current4").value) || 0
+            };
+
+            let profitLoss = {
+                papaStocks: prices.papaStocks - (investments.papaStocks || 0),
+                papaMutualFund: prices.papaMutualFund - (investments.papaMutualFund || 0),
+                myStocks: prices.myStocks - (investments.myStocks || 0),
+                myMutualFunds: prices.myMutualFunds - (investments.myMutualFunds || 0)
+            };
+
+            let totalProfitLoss = Object.values(profitLoss).reduce((a, b) => a + b, 0).toFixed(2);
+
+            localStorage.setItem("currentPrices", JSON.stringify(prices));
+            displayProfitLoss(profitLoss, totalProfitLoss);
+            drawBarChart(profitLoss);
+            drawTimeSeriesChart();
+            drawPieChart();
+        }
+
+        function submitUpdate(event) {
+            event.preventDefault();
+            let totalProfitLoss = document.getElementById("profitLoss").getAttribute("data-total") || 0;
+
+            let today = new Date().toISOString().split("T")[0];
+            let existingEntry = timeSeriesData.find(entry => entry.date === today);
+
+            if (existingEntry) {
+                existingEntry.value = parseFloat(totalProfitLoss);
+            } else {
+                timeSeriesData.push({ date: today, value: parseFloat(totalProfitLoss) });
+            }
+
+            localStorage.setItem("timeSeriesData", JSON.stringify(timeSeriesData));
+            drawTimeSeriesChart();
+        }
+
+        function displayProfitLoss(profitLoss, totalProfitLoss) {
+            document.getElementById("profitLoss").innerHTML = `
+                <h3>Profit/Loss Breakdown</h3>
+                <p><strong>Papa Stocks:</strong> ${profitLoss.papaStocks.toFixed(2)}</p>
+                <p><strong>Papa Mutual Fund:</strong> ${profitLoss.papaMutualFund.toFixed(2)}</p>
+                <p><strong>My Stocks:</strong> ${profitLoss.myStocks.toFixed(2)}</p>
+                <p><strong>My Mutual Funds:</strong> ${profitLoss.myMutualFunds.toFixed(2)}</p>
+                <h3>Total Profit/Loss: ${totalProfitLoss}</h3>
+            `;
+            document.getElementById("profitLoss").setAttribute("data-total", totalProfitLoss);
+        }
+
+        function drawBarChart(profitLoss) {
+            let ctx = document.getElementById("profitChart").getContext("2d");
+
+            if (barChartInstance) {
+                barChartInstance.destroy();
+            }
+
+            barChartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: ["Papa Stocks", "Papa Mutual Fund", "My Stocks", "My Mutual Funds"],
+                    datasets: [{
+                        label: "Profit/Loss",
+                        data: Object.values(profitLoss),
+                        backgroundColor: Object.values(profitLoss).map(value => value >= 0 ? "green" : "red"),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Profit/Loss: ${context.raw}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function drawTimeSeriesChart() {
+            let ctx = document.getElementById("timeSeriesChart").getContext("2d");
+
+            if (timeSeriesChartInstance) {
+                timeSeriesChartInstance.destroy();
+            }
+
+            // Sort the timeSeriesData by date
+            timeSeriesData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            let labels = timeSeriesData.map(entry => entry.date);
+            let data = timeSeriesData.map(entry => entry.value);
+
+            timeSeriesChartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Profit/Loss Over Time",
+                        data: data,
+                        borderColor: "blue",
+                        backgroundColor: "rgba(0, 0, 255, 0.2)",
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Profit/Loss: ${context.raw}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function drawPieChart() {
+            let ctx = document.getElementById("pieChart").getContext("2d");
+
+            if (pieChartInstance) {
+                pieChartInstance.destroy();
+            }
+
+            pieChartInstance = new Chart(ctx, {
+                type: "pie",
+                data: {
+                    labels: ["Papa Stocks", "Papa Mutual Fund", "My Stocks", "My Mutual Funds"],
+                    datasets: [{
+                        label: "Initial Investments",
+                        data: Object.values(investments),
+                        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Initial Investment: ${context.raw}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadPreviousData() {
+            if (currentPrices) {
+                document.getElementById("current1").value = currentPrices.papaStocks || "";
+                document.getElementById("current2").value = currentPrices.papaMutualFund || "";
+                document.getElementById("current3").value = currentPrices.myStocks || "";
+                document.getElementById("current4").value = currentPrices.myMutualFunds || "";
+            }
+            updateGraphs();
+        }
+
+        window.onload = function () {
+            loadPreviousData();
+            document.querySelectorAll("input").forEach(input => {
+                input.addEventListener("input", updateGraphs);
+            });
+        };
+    </script>
+</head>
+<body>
+    <h1>Investment Update</h1>
+
+    <div class="container">
+        <form onsubmit="submitUpdate(event)">
+            <label for="current1">Papa Stocks Current Price</label>
+            <input type="number" id="current1" placeholder="Enter current price for Papa Stocks" required>
+            
+            <label for="current2">Papa Mutual Fund Current Price</label>
+            <input type="number" id="current2" placeholder="Enter current price for Papa Mutual Fund" required>
+            
+            <label for="current3">My Stocks Current Price</label>
+            <input type="number" id="current3" placeholder="Enter current price for My Stocks" required>
+            
+            <label for="current4">My Mutual Funds Current Price</label>
+            <input type="number" id="current4" placeholder="Enter current price for My Mutual Funds" required>
+            
+            <button type="submit">Update</button>
+        </form>
+    </div>
+
+    <div class="container profit-loss" id="profitLoss"></div>
+
+    <div class="container">
+        <h2>Profit/Loss Breakdown</h2>
+        <div class="chart-container">
+            <canvas id="profitChart"></canvas>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Initial Investments Distribution</h2>
+        <div class="chart-container">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Profit/Loss Over Time</h2>
+        <div class="chart-container">
+            <canvas id="timeSeriesChart"></canvas>
+        </div>
+    </div>
+
+    <div class="navigation">
+        <a href="index.html"><button style="background: #6c757d;">Back to Entry</button></a>
+    </div>
+</body>
+</html>

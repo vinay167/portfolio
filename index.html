@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My portfolio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 90%;
+            margin: 10px;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+        label {
+            display: block;
+            text-align: left;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        function saveInvestments(event) {
+            event.preventDefault();
+            let investments = {
+                papaStocks: parseFloat(document.getElementById("papaStocks").value),
+                papaMutualFund: parseFloat(document.getElementById("papaMutualFund").value),
+                myStocks: parseFloat(document.getElementById("myStocks").value),
+                myMutualFunds: parseFloat(document.getElementById("myMutualFunds").value)
+            };
+
+            if (Object.values(investments).some(value => value < 0)) {
+                document.getElementById("message").textContent = "Please enter non-negative values.";
+                document.getElementById("message").style.color = "red";
+                return;
+            }
+
+            if (confirm("Are you sure you want to save these investments?")) {
+                localStorage.setItem("investments", JSON.stringify(investments));
+                document.getElementById("message").textContent = "Investments saved successfully!";
+                document.getElementById("message").style.color = "green";
+                displaySummary(investments);
+            }
+        }
+
+        function resetInvestments() {
+            if (confirm("Are you sure you want to reset all investments? This cannot be undone.")) {
+                localStorage.removeItem("investments");
+                document.getElementById("papaStocks").value = "";
+                document.getElementById("papaMutualFund").value = "";
+                document.getElementById("myStocks").value = "";
+                document.getElementById("myMutualFunds").value = "";
+                document.getElementById("message").textContent = "Investments reset successfully!";
+                document.getElementById("message").style.color = "green";
+                document.getElementById("summary").innerHTML = "";
+            }
+        }
+
+        function displaySummary(investments) {
+            let summary = `
+                <h3>Investment Summary</h3>
+                <p><strong>Papa Stocks:</strong> ${investments.papaStocks}</p>
+                <p><strong>Papa Mutual Fund:</strong> ${investments.papaMutualFund}</p>
+                <p><strong>My Stocks:</strong> ${investments.myStocks}</p>
+                <p><strong>My Mutual Funds:</strong> ${investments.myMutualFunds}</p>
+            `;
+            document.getElementById("summary").innerHTML = summary;
+        }
+
+        window.onload = function () {
+            let savedInvestments = JSON.parse(localStorage.getItem("investments"));
+            if (savedInvestments) {
+                document.getElementById("papaStocks").value = savedInvestments.papaStocks || "";
+                document.getElementById("papaMutualFund").value = savedInvestments.papaMutualFund || "";
+                document.getElementById("myStocks").value = savedInvestments.myStocks || "";
+                document.getElementById("myMutualFunds").value = savedInvestments.myMutualFunds || "";
+                displaySummary(savedInvestments);
+            }
+        };
+    </script>
+</head>
+<body>
+    <h1>Enter Your Investments</h1>
+
+    <div class="container">
+        <form onsubmit="saveInvestments(event)">
+            <label for="papaStocks">Papa Stocks</label>
+            <input type="number" id="papaStocks" placeholder="Enter initial amount for Papa Stocks" min="0" required>
+            
+            <label for="papaMutualFund">Papa Mutual Fund</label>
+            <input type="number" id="papaMutualFund" placeholder="Enter initial amount for Papa Mutual Fund" min="0" required>
+            
+            <label for="myStocks">My Stocks</label>
+            <input type="number" id="myStocks" placeholder="Enter initial amount for My Stocks" min="0" required>
+            
+            <label for="myMutualFunds">My Mutual Funds</label>
+            <input type="number" id="myMutualFunds" placeholder="Enter initial amount for My Mutual Funds" min="0" required>
+            
+            <button type="submit">Save Investments</button>
+            <button type="button" onclick="resetInvestments()" style="background: #dc3545;">Reset Investments</button>
+        </form>
+        <p id="message" style="color: green; font-weight: bold;"></p>
+        <div id="summary" style="margin-top: 20px; text-align: left;"></div>
+        <br>
+        <a href="update.html"><button style="background: #007bff;">Go to Update</button></a>
+    </div>
+</body>
+</html>
