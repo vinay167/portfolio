@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 90%;
+            margin: 10px;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .profit-loss {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 300px;
+            margin: 20px auto;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let investments = {};
+        let chartInstance = null;
+        let timeSeriesChart = null;
+        let timeSeriesData = JSON.parse(localStorage.getItem("timeSeriesData")) || [];
+
+        function fetchInvestments() {
+            investments = JSON.parse(localStorage.getItem("investments")) || {};
+            let totalInvested = Object.values(investments).reduce((a, b) => a + b, 0).toFixed(2);
+            document.getElementById("totalInvested").innerText = `Total Invested: $${totalInvested}`;
+        }
+
+        function submitUpdate(event) {
+            event.preventDefault();
+
+            let currentPrices = {
+                investment1: parseFloat(document.getElementById("current1").value) || 0,
+                investment2: parseFloat(document.getElementById("current2").value) || 0,
+                investment3: parseFloat(document.getElementById("current3").value) || 0,
+                investment4: parseFloat(document.getElementById("current4").value) || 0
+            };
+
+            let profitLoss = {
+                investment1: currentPrices.investment1 - investments.investment1,
+                investment2: currentPrices.investment2 - investments.investment2,
+                investment3: currentPrices.investment3 - investments.investment3,
+                investment4: currentPrices.investment4 - investments.investment4
+            };
+
+            let totalProfitLoss = Object.values(profitLoss).reduce((a, b) => a + b, 0).toFixed(2);
+            document.getElementById("profitLoss").innerHTML = `
+                <p>Investment 1: ${profitLoss.investment1.toFixed(2)}</p>
+                <p>Investment 2: ${profitLoss.investment2.toFixed(2)}</p>
+                <p>Investment 3: ${profitLoss.investment3.toFixed(2)}</p>
+                <p>Investment 4: ${profitLoss.investment4.toFixed(2)}</p>
+                <h3>Total Profit/Loss: ${totalProfitLoss}</h3>
+            `;
+
+            updateTimeSeries(totalProfitLoss);
+            drawBarChart(profitLoss);
+            drawTimeSeriesChart();
+        }
+
+        function drawBarChart(profitLoss) {
+            let ctx = document.getElementById("profitChart").getContext("2d");
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: ["Investment 1", "Investment 2", "Investment 3", "Investment 4"],
+                    datasets: [{
+                        label: "Profit/Loss",
+                        data: Object.values(profitLoss),
+                        backgroundColor: Object.values(profitLoss).map(value => value >= 0 ? "green" : "red"),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateTimeSeries(totalProfitLoss) {
+            let today = new Date().toISOString().split("T")[0]; // Get current date
+
+            let existingEntry = timeSeriesData.find(entry => entry.date === today);
+            if (existingEntry) {
+                existingEntry.value = parseFloat(totalProfitLoss);
+            } else {
+                timeSeriesData.push({ date: today, value: parseFloat(totalProfitLoss) });
+            }
+
+            localStorage.setItem("timeSeriesData", JSON.stringify(timeSeriesData));
+        }
+
+        function drawTimeSeriesChart() {
+            let ctx = document.getElementById("timeSeriesChart").getContext("2d");
+
+            if (timeSeriesChart) {
+                timeSeriesChart.destroy();
+            }
+
+            let labels = timeSeriesData.map(entry => entry.date);
+            let data = timeSeriesData.map(entry => entry.value);
+
+            timeSeriesChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Profit/Loss Over Time",
+                        data: data,
+                        borderColor: data.map(value => value >= 0 ? "green" : "red"),
+                        backgroundColor: "rgba(0, 0, 0, 0.1)",
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+
+        window.onload = function () {
+            fetchInvestments();
+            drawTimeSeriesChart();
+        };
+    </script>
+</head>
+<body>
+    <h1>Investment Update</h1>
+    <h3 id="totalInvested">Total Invested: $0</h3>
+
+    <div class="container">
+        <form onsubmit="submitUpdate(event)">
+            <input type="number" id="current1" placeholder="Investment 1 Current Price" required>
+            <input type="number" id="current2" placeholder="Investment 2 Current Price" required>
+            <input type="number" id="current3" placeholder="Investment 3 Current Price" required>
+            <input type="number" id="current4" placeholder="Investment 4 Current Price" required>
+            <button type="submit">Update</button>
+        </form>
+    </div>
+
+    <div id="profitLoss" class="profit-loss"></div>
+
+    <div class="chart-container">
+        <canvas id="profitChart"></canvas>
+    </div>
+
+    <h2>Profit/Loss Over Time</h2>
+    <div class="chart-container">
+        <canvas id="timeSeriesChart"></canvas>
+    </div>
+</body>
+</html>

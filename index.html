@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Entry</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 90%;
+            margin: 10px;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+    </style>
+    <script>
+        function saveInvestments(event) {
+            event.preventDefault();
+            let investments = {
+                investment1: parseFloat(document.getElementById("investment1").value) || 0,
+                investment2: parseFloat(document.getElementById("investment2").value) || 0,
+                investment3: parseFloat(document.getElementById("investment3").value) || 0,
+                investment4: parseFloat(document.getElementById("investment4").value) || 0
+            };
+
+            localStorage.setItem("investments", JSON.stringify(investments));
+            alert("Investments saved successfully!");
+        }
+    </script>
+</head>
+<body>
+    <h1>Enter Your Investments</h1>
+
+    <div class="container">
+        <form onsubmit="saveInvestments(event)">
+            <input type="number" id="investment1" placeholder="Investment 1 Amount" required>
+            <input type="number" id="investment2" placeholder="Investment 2 Amount" required>
+            <input type="number" id="investment3" placeholder="Investment 3 Amount" required>
+            <input type="number" id="investment4" placeholder="Investment 4 Amount" required>
+            <button type="submit">Save Investments</button>
+        </form>
+        <br>
+        <a href="update.html"><button style="background: #007bff;">Go to Update</button></a>
+    </div>
+</body>
+</html>
