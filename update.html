@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 90%;
+            margin: 10px;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 500px;
+            height: 300px;
+            margin: 20px auto;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let investments = JSON.parse(localStorage.getItem("investments")) || {};
+        let timeSeriesData = JSON.parse(localStorage.getItem("timeSeriesData")) || [];
+        let currentPrices = JSON.parse(localStorage.getItem("currentPrices")) || {};
+
+        let barChartInstance = null;
+        let timeSeriesChartInstance = null;
+
+        function updateGraphs() {
+            let prices = {
+                papaStocks: parseFloat(document.getElementById("current1").value) || 0,
+                papaMutualFund: parseFloat(document.getElementById("current2").value) || 0,
+                myStocks: parseFloat(document.getElementById("current3").value) || 0,
+                myMutualFunds: parseFloat(document.getElementById("current4").value) || 0
+            };
+
+            let profitLoss = {
+                papaStocks: prices.papaStocks - (investments.papaStocks || 0),
+                papaMutualFund: prices.papaMutualFund - (investments.papaMutualFund || 0),
+                myStocks: prices.myStocks - (investments.myStocks || 0),
+                myMutualFunds: prices.myMutualFunds - (investments.myMutualFunds || 0)
+            };
+
+            let totalProfitLoss = Object.values(profitLoss).reduce((a, b) => a + b, 0).toFixed(2);
+
+            localStorage.setItem("currentPrices", JSON.stringify(prices));
+            displayProfitLoss(profitLoss, totalProfitLoss);
+            drawBarChart(profitLoss);
+            drawTimeSeriesChart();
+        }
+
+        function submitUpdate(event) {
+            event.preventDefault();
+            let totalProfitLoss = document.getElementById("profitLoss").getAttribute("data-total") || 0;
+
+            let today = new Date().toISOString().split("T")[0];
+            let existingEntry = timeSeriesData.find(entry => entry.date === today);
+
+            if (existingEntry) {
+                existingEntry.value = parseFloat(totalProfitLoss);
+            } else {
+                timeSeriesData.push({ date: today, value: parseFloat(totalProfitLoss) });
+            }
+
+            localStorage.setItem("timeSeriesData", JSON.stringify(timeSeriesData));
+            drawTimeSeriesChart();
+        }
+
+        function displayProfitLoss(profitLoss, totalProfitLoss) {
+            document.getElementById("profitLoss").innerHTML = `
+                <p>Papa Stocks: ${profitLoss.papaStocks.toFixed(2)}</p>
+                <p>Papa Mutual Fund: ${profitLoss.papaMutualFund.toFixed(2)}</p>
+                <p>My Stocks: ${profitLoss.myStocks.toFixed(2)}</p>
+                <p>My Mutual Funds: ${profitLoss.myMutualFunds.toFixed(2)}</p>
+                <h3>Total Profit/Loss: ${totalProfitLoss}</h3>
+            `;
+            document.getElementById("profitLoss").setAttribute("data-total", totalProfitLoss);
+        }
+
+        function drawBarChart(profitLoss) {
+            let ctx = document.getElementById("profitChart").getContext("2d");
+
+            if (barChartInstance) {
+                barChartInstance.destroy();
+            }
+
+            barChartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: ["Papa Stocks", "Papa Mutual Fund", "My Stocks", "My Mutual Funds"],
+                    datasets: [{
+                        label: "Profit/Loss",
+                        data: Object.values(profitLoss),
+                        backgroundColor: Object.values(profitLoss).map(value => value >= 0 ? "green" : "red"),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function drawTimeSeriesChart() {
+            let ctx = document.getElementById("timeSeriesChart").getContext("2d");
+
+            if (timeSeriesChartInstance) {
+                timeSeriesChartInstance.destroy();
+            }
+
+            let labels = timeSeriesData.map(entry => entry.date);
+            let data = timeSeriesData.map(entry => entry.value);
+
+            timeSeriesChartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Profit/Loss Over Time",
+                        data: data,
+                        borderColor: "blue",
+                        backgroundColor: "rgba(0, 0, 255, 0.2)",
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+
+        function loadPreviousData() {
+            if (currentPrices) {
+                document.getElementById("current1").value = currentPrices.papaStocks || "";
+                document.getElementById("current2").value = currentPrices.papaMutualFund || "";
+                document.getElementById("current3").value = currentPrices.myStocks || "";
+                document.getElementById("current4").value = currentPrices.myMutualFunds || "";
+            }
+            updateGraphs();
+        }
+
+        window.onload = function () {
+            loadPreviousData();
+            document.querySelectorAll("input").forEach(input => {
+                input.addEventListener("input", updateGraphs);
+            });
+        };
+    </script>
+</head>
+<body>
+    <h1>Investment Update</h1>
+
+    <div class="container">
+        <form onsubmit="submitUpdate(event)">
+            <input type="number" id="current1" placeholder="Papa Stocks Current Price">
+            <input type="number" id="current2" placeholder="Papa Mutual Fund Current Price">
+            <input type="number" id="current3" placeholder="My Stocks Current Price">
+            <input type="number" id="current4" placeholder="My Mutual Funds Current Price">
+            <button type="submit">Update</button>
+        </form>
+    </div>
+
+    <div id="profitLoss" class="profit-loss"></div>
+
+    <div class="chart-container">
+        <canvas id="profitChart"></canvas>
+    </div>
+
+    <h2>Profit/Loss Over Time</h2>
+    <div class="chart-container">
+        <canvas id="timeSeriesChart"></canvas>
+    </div>
+</body>
+</html>
