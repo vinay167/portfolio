@@ -40,15 +40,25 @@
         function saveInvestments(event) {
             event.preventDefault();
             let investments = {
-                investment1: parseFloat(document.getElementById("investment1").value) || 0,
-                investment2: parseFloat(document.getElementById("investment2").value) || 0,
-                investment3: parseFloat(document.getElementById("investment3").value) || 0,
-                investment4: parseFloat(document.getElementById("investment4").value) || 0
+                papaStocks: parseFloat(document.getElementById("papaStocks").value) || 0,
+                papaMutualFund: parseFloat(document.getElementById("papaMutualFund").value) || 0,
+                myStocks: parseFloat(document.getElementById("myStocks").value) || 0,
+                myMutualFunds: parseFloat(document.getElementById("myMutualFunds").value) || 0
             };
 
             localStorage.setItem("investments", JSON.stringify(investments));
-            alert("Investments saved successfully!");
+            document.getElementById("message").textContent = "Investments saved successfully!";
         }
+
+        window.onload = function () {
+            let savedInvestments = JSON.parse(localStorage.getItem("investments"));
+            if (savedInvestments) {
+                document.getElementById("papaStocks").value = savedInvestments.papaStocks || "";
+                document.getElementById("papaMutualFund").value = savedInvestments.papaMutualFund || "";
+                document.getElementById("myStocks").value = savedInvestments.myStocks || "";
+                document.getElementById("myMutualFunds").value = savedInvestments.myMutualFunds || "";
+            }
+        };
     </script>
 </head>
 <body>
@@ -56,12 +66,13 @@
 
     <div class="container">
         <form onsubmit="saveInvestments(event)">
-            <input type="number" id="investment1" placeholder="Investment 1 Amount" required>
-            <input type="number" id="investment2" placeholder="Investment 2 Amount" required>
-            <input type="number" id="investment3" placeholder="Investment 3 Amount" required>
-            <input type="number" id="investment4" placeholder="Investment 4 Amount" required>
+            <input type="number" id="papaStocks" placeholder="Papa Stocks" min="0" required>
+            <input type="number" id="papaMutualFund" placeholder="Papa Mutual Fund" min="0" required>
+            <input type="number" id="myStocks" placeholder="My Stocks" min="0" required>
+            <input type="number" id="myMutualFunds" placeholder="My Mutual Funds" min="0" required>
             <button type="submit">Save Investments</button>
         </form>
+        <p id="message" style="color: green;"></p>
         <br>
         <a href="update.html"><button style="background: #007bff;">Go to Update</button></a>
     </div>
