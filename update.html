@@ -255,6 +255,51 @@
             updateGraphs();
         }
 
+        function checkDate() {
+            let dateInput = document.getElementById("historyDate");
+            let profitLossInput = document.getElementById("historyProfitLoss");
+            let submitHistoryButton = document.getElementById("submitHistory");
+
+            let selectedDate = new Date(dateInput.value);
+            let today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset time to midnight for accurate comparison
+
+            if (selectedDate < today) {
+                profitLossInput.classList.remove("hidden");
+                submitHistoryButton.classList.remove("hidden");
+            } else {
+                profitLossInput.classList.add("hidden");
+                submitHistoryButton.classList.add("hidden");
+            }
+        }
+
+        function submitHistory() {
+            let dateInput = document.getElementById("historyDate").value;
+            let profitLossInput = parseFloat(document.getElementById("historyProfitLoss").value);
+
+            if (!dateInput || isNaN(profitLossInput)) {
+                alert("Please enter a valid date and profit/loss value.");
+                return;
+            }
+
+            let existingEntry = timeSeriesData.find(entry => entry.date === dateInput);
+
+            if (existingEntry) {
+                existingEntry.value = profitLossInput;
+            } else {
+                timeSeriesData.push({ date: dateInput, value: profitLossInput });
+            }
+
+            localStorage.setItem("timeSeriesData", JSON.stringify(timeSeriesData));
+            drawTimeSeriesChart();
+
+            // Clear inputs
+            document.getElementById("historyDate").value = "";
+            document.getElementById("historyProfitLoss").value = "";
+            document.getElementById("historyProfitLoss").classList.add("hidden");
+            document.getElementById("submitHistory").classList.add("hidden");
+        }
+
         window.onload = function () {
             loadPreviousData();
             document.querySelectorAll("input").forEach(input => {
@@ -298,6 +343,13 @@
         <div class="chart-container">
             <canvas id="pieChart"></canvas>
         </div>
+    </div>
+
+    <div class="container">
+        <h2>Add Historical Profit/Loss</h2>
+        <input type="date" id="historyDate" onchange="checkDate()">
+        <input type="number" id="historyProfitLoss" placeholder="Profit/Loss on this date" class="hidden">
+        <button id="submitHistory" onclick="submitHistory()" class="hidden">Submit Historical Data</button>
     </div>
 
     <div class="container">
